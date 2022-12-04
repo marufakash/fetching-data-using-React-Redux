@@ -1,70 +1,128 @@
-# Getting Started with Create React App
+## API calling in react-redux
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+- step 1: setup project & install packages `npm install redux react-redux redux-thunk axios`
 
-## Available Scripts
+- step 2: define constants-> src/services/constants/constants.js
 
-In the project directory, you can run:
+```
+export const GET_TODOS_REQUEST = 'GET_TODOS_REQUEST';
+export const GET_TODOS_SUCCESS = 'GET_TODOS_SUCCESS';
+export const GET_TODOS_FAILED = 'GET_TODOS_FAILED';
+```
 
-### `npm start`
+- step 3: create async action creator -> src/services/actions/actions.js
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```JavaScript
+import axios from 'axios';
+import { GET_TODOS_FAILED, GET_TODOS_REQUEST, GET_TODOS_SUCCESS } from '../constants/constants';
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+export const getAllTodos = () => async (dispatch) => {
+    dispatch({type: GET_TODOS_REQUEST})
+    try{
+        const res = await axios.get("https://jsonplaceholder.typicode.com/posts/1/comments")
+        dispatch({type:GET_TODOS_SUCCESS, payload: res.data})
+    }catch(error){
+        dispatch({type: GET_TODOS_FAILED,payload: error.message})
+    }
+}
+```
 
-### `npm test`
+- step 4: create reducer -> src/services/reducers/reducer.js
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```JavaScript
+const initialState = {
+    isLoading: false,
+    todos: [],
+    error: null,
+}
 
-### `npm run build`
+export const todosReducer = (state = initialState , action) => {
+    switch(action.type){
+        case GET_TODOS_REQUEST:
+            return {
+                ...state,
+                isLoading: true,
+            }
+        case GET_TODOS_SUCCESS:
+            return {
+                isLoading: false,
+                todos: action.payload,
+                error: null,
+            }
+        case GET_TODOS_FAILED:
+            return {
+                isLoading: false,
+                todos: [],
+                error: action.payload,
+            }
+        default:
+            return state;
+    }
+}
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- step 5: create store -> src/Store.js
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```JavaScript
+import { applyMiddleware, createStore } from 'redux';
+import thunk from 'redux-thunk';
+import { todosReducer } from './Services/reducer/reducer';
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+const store = createStore(todosReducer, applyMiddleware(thunk));
 
-### `npm run eject`
+export default store;
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- step 6: provide store -> src/index.js
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```JavaScript
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+import { Provider } from 'react-redux';
+import store from "./Store";
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <Provider store={store}>
+    <App />
+  </Provider>
+);
+```
 
-## Learn More
+- step 7: use store -> src/components/Todos.js
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```JavaScript
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { getAllTodos } from '../Services/actions/actions'
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+const Todos = () => {
+    const {isLoading, todos, error} = useSelector(state => state)
+    const dispatch = useDispatch();
 
-### Code Splitting
+    useEffect(() => {
+        dispatch(getAllTodos());
+    },[])
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+    return (
+        <div>
+            <h1 className="heading">Data fetch using React-Redux</h1>
+            {isLoading && <h3>Data is loading...</h3>}
+            {error && <h3>P{error.message}</h3>}
+            {todos && todos.map((todo) => {
+                const {id, name, email} = todo;
+                return (
+                    <article key={id} className='card'>
+                        <h2>Name : {name}</h2>
+                        <h3>Email : {email}</h3>
+                    </article>
+                )
+            })}
+        </div>
+    )
+}
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+export default Todos;
+```
